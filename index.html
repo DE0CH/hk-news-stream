@@ -9,10 +9,11 @@
 @media (prefers-color-scheme: dark) { :root { --bg:#0e1013; --bubble:#202329; --text:#ececef; --muted:#9a9ca3; --link:#3fc48f; --bar:#17191dee; --chip:#2b2f36; } }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 -apple-system, "PingFang HK", "Noto Sans TC", system-ui, sans-serif; }
-header { position:sticky; top:0; background:var(--bar); backdrop-filter:blur(8px); padding:10px 16px; border-bottom:1px solid var(--chip); display:flex; align-items:center; gap:12px; z-index:1; }
+header { position:sticky; top:0; background:var(--bar); backdrop-filter:blur(8px); padding:10px 16px 8px; border-bottom:1px solid var(--chip); z-index:1; }
+header .in { max-width:760px; margin:0 auto; }
 header h1 { font-size:17px; margin:0; }
 header .sub { color:var(--muted); font-size:13px; }
-.filters { display:flex; gap:6px; flex-wrap:wrap; padding:10px 16px 0; max-width:760px; margin:0 auto; }
+.filters { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
 .filters button { border:0; background:var(--chip); color:var(--text); border-radius:999px; padding:5px 12px; font:inherit; font-size:14px; cursor:pointer; }
 .filters button.on { background:var(--link); color:#fff; }
 main { max-width:760px; margin:0 auto; padding:8px 16px 40px; }
@@ -26,8 +27,7 @@ main { max-width:760px; margin:0 auto; padding:8px 16px 40px; }
 </style>
 </head>
 <body>
-<header><div><h1>HK News Stream</h1><div class="sub" id="status">Loading…</div></div></header>
-<div class="filters" id="filters"></div>
+<header><div class="in"><h1>HK News Stream</h1><div class="sub" id="status">Loading…</div><div class="filters" id="filters"></div></div></header>
 <main id="feed"></main>
 <script>
 const EMO = { positive:"😄", neutral:"😐", negative:"😣", monitor:"👀", issue:"⚠️", trend:"📈" };
