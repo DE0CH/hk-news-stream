@@ -52,12 +52,12 @@ HKEJ_SECTIONS = {"hknews": "政壇脈搏", "investment": "理財投資", "commen
 
 def hkej():
     """信報: each section page links /dailynews/<section>/article/<id>/<url-encoded title>"""
-    out = []
+    out, errors = [], []
     for sec, name in HKEJ_SECTIONS.items():
         try:
             page = get(f"https://www1.hkej.com/dailynews/{sec}")
         except Exception as e:
-            print(f"hkej {sec}: {e}", flush=True)
+            errors.append(f"{sec}: {e}")
             continue
         seen = set()
         for aid, slug in re.findall(rf'href="/dailynews/{sec}/article/(\d+)/([^"?#]+)"', page):
@@ -67,6 +67,10 @@ def hkej():
             title = " ".join(urllib.parse.unquote_plus(slug).split())
             out.append({"source": "信報", "section": name, "title": title,
                         "url": f"https://www1.hkej.com/dailynews/{sec}/article/{aid}"})
+        if not seen:
+            errors.append(f"{sec}: no articles in {len(page)} bytes")
+    if errors and not out:
+        raise RuntimeError("; ".join(errors))
     return out
 
 
@@ -129,9 +133,12 @@ def save():
 def poll_once():
     known = {it["url"] for it in state["items"]}
     fresh, errors = [], []
+    counts = {}
     for src in SOURCES:
         try:
-            for it in src():
+            got = src()
+            counts[src.__name__] = len(got)
+            for it in got:
                 if it["url"] not in known:
                     known.add(it["url"])
                     fresh.append(it)
@@ -152,6 +159,7 @@ def poll_once():
         state["items"] = (state["items"] + fresh)[-KEEP:]
         state["last_poll"] = now
         state["last_error"] = "; ".join(errors) or None
+        state["source_counts"] = counts
         save()
     print(f"{now} +{len(fresh)} items{'; ' + state['last_error'] if errors else ''}", flush=True)
 
@@ -178,7 +186,8 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/feed.json":
             with lock:
                 body = json.dumps({"items": state["items"][-500:], "last_poll": state["last_poll"],
-                                   "last_error": state["last_error"]}, ensure_ascii=False).encode()
+                                   "last_error": state["last_error"],
+                                   "source_counts": state.get("source_counts")}, ensure_ascii=False).encode()
             self.send(200, "application/json; charset=utf-8", body)
         elif path == "/healthz":
             self.send(200, "text/plain", b"ok")
