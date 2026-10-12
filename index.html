@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HK News Stream</title>
+<style>
+:root { --bg:#f2efe9; --bubble:#ffffff; --text:#1d1d1f; --muted:#6e6e73; --link:#0a7a5a; --bar:#ffffffee; --chip:#ecebe7; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0e1013; --bubble:#202329; --text:#ececef; --muted:#9a9ca3; --link:#3fc48f; --bar:#17191dee; --chip:#2b2f36; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 -apple-system, "PingFang HK", "Noto Sans TC", system-ui, sans-serif; }
+header { position:sticky; top:0; background:var(--bar); backdrop-filter:blur(8px); padding:10px 16px; border-bottom:1px solid var(--chip); display:flex; align-items:center; gap:12px; z-index:1; }
+header h1 { font-size:17px; margin:0; }
+header .sub { color:var(--muted); font-size:13px; }
+.filters { display:flex; gap:6px; flex-wrap:wrap; padding:10px 16px 0; max-width:760px; margin:0 auto; }
+.filters button { border:0; background:var(--chip); color:var(--text); border-radius:999px; padding:5px 12px; font:inherit; font-size:14px; cursor:pointer; }
+.filters button.on { background:var(--link); color:#fff; }
+main { max-width:760px; margin:0 auto; padding:8px 16px 40px; }
+.day { text-align:center; margin:18px 0 8px; }
+.day span { background:var(--chip); color:var(--muted); font-size:13px; padding:3px 10px; border-radius:8px; }
+.msg { background:var(--bubble); border-radius:14px; padding:9px 12px 6px; margin:6px 0; max-width:640px; overflow-wrap:anywhere; }
+.tags { font-style:italic; }
+.msg a { color:var(--link); }
+.time { text-align:right; color:var(--muted); font-size:12px; }
+.note { color:var(--muted); font-size:13px; text-align:center; margin:14px 0; }
+</style>
+</head>
+<body>
+<header><div><h1>HK News Stream</h1><div class="sub" id="status">Loading…</div></div></header>
+<div class="filters" id="filters"></div>
+<main id="feed"></main>
+<script>
+const EMO = { positive:"😄", neutral:"😐", negative:"😣", monitor:"👀", issue:"⚠️", trend:"📈" };
+const FILTERS = [["all","All"],["tagged","Tagged"],["issue","⚠️ issue"],["negative","😣 negative"],["trend","📈 trend"]];
+let filter = "all", items = [];
+try { filter = localStorage.getItem("filter") || "all"; } catch (e) {}
+
+function esc(s) { return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function keep(it) {
+  if (filter === "all") return true;
+  if (filter === "tagged") return it.sentiment || it.flags.length;
+  return it.sentiment === filter || it.flags.includes(filter);
+}
+function render() {
+  document.getElementById("filters").innerHTML = FILTERS.map(([k, l]) =>
+    `<button class="${k === filter ? "on" : ""}" data-k="${k}">${l}</button>`).join("");
+  let out = "", day = "";
+  for (const it of items.filter(keep)) {
+    const d = it.seen.slice(0, 10);
+    if (d !== day) { day = d; out += `<div class="day"><span>${d}</span></div>`; }
+    const tags = [it.sentiment, ...it.flags].filter(Boolean).map(t => `${EMO[t]}${t}`).join(" ");
+    out += `<div class="msg">${tags ? `<span class="tags">(${tags})</span> ` : ""}[${esc(it.section)}][${esc(it.title)}]<br>` +
+      `<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(decodeURI(it.url))}</a>` +
+      `<div class="time">${esc(it.source)} · ${it.seen.slice(11, 16)}</div></div>`;
+  }
+  document.getElementById("feed").innerHTML = out || `<div class="note">No items yet.</div>`;
+}
+document.getElementById("filters").addEventListener("click", e => {
+  const k = e.target.dataset && e.target.dataset.k; if (!k) return;
+  filter = k; try { localStorage.setItem("filter", k); } catch (e) {} render();
+});
+async function load() {
+  try {
+    const r = await fetch("feed.json", { cache: "no-store" });
+    const d = await r.json();
+    const atBottom = innerHeight + scrollY >= document.body.scrollHeight - 40;
+    items = d.items;
+    document.getElementById("status").textContent =
+      `${items.length} items · last check ${d.last_poll ? d.last_poll.slice(11, 16) + " HKT" : "pending"}` + (d.last_error ? " · " + d.last_error : "");
+    render();
+    if (atBottom) scrollTo(0, document.body.scrollHeight);
+  } catch (e) {
+    document.getElementById("status").textContent = "No response from the server; retrying.";
+  }
+}
+load(); setInterval(load, 60000);
+</script>
+</body>
+</html>
