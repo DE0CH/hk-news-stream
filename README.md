@@ -8,6 +8,8 @@ shown as a chat-style stream.
   hasn't seen, tags them in batches through OpenRouter (`MODEL`, default `anthropic/claude-haiku-5.5`), stores
   them in `$DATA_DIR/items.json` and serves `/` (the page), `/feed.json` and `/healthz` on `PORT` (8080).
 - `BRIEF` (env) says what counts as relevant; the default is in `app.py`.
+- `HKEJ_PROXY` (env, optional): an HTTP proxy for 信報 only, which answers the Jarvis 2 box's IP with 403; the box
+  uses an Evomi HK datacenter proxy.
 - Sources: 東方日報 (要聞港聞, from the home page) and 信報 (政壇脈搏, 理財投資, 信報評論, 地產).
   discuss.com.hk answers datacenter IPs with 403, so it is not included.
 

@@ -6,7 +6,8 @@ model on OpenRouter to tag each one (sentiment + monitor/issue/trend), stores th
 serves them as a chat-style page (/) and JSON (/feed.json). Standard library only, one process, no build.
 
 Env: OPENROUTER_API (required), MODEL (default anthropic/claude-haiku-5.5), POLL_SECONDS (900), DATA_DIR
-(/data), PORT (8080), BRIEF (what counts as relevant; default below).
+(/data), PORT (8080), BRIEF (what counts as relevant; default below), HKEJ_PROXY (http://user:pass@host:port for
+信報, which answers some datacenter IPs, the Jarvis 2 box's among them, with 403).
 """
 import html, json, os, re, threading, time, urllib.parse, urllib.request
 from datetime import datetime, timezone, timedelta
@@ -30,9 +31,10 @@ state = {"items": [], "last_poll": None, "last_error": None}
 
 # ---- sources: each returns [{"source", "section", "title", "url"}] ----
 
-def get(url):
+def get(url, proxy=None):
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Language": "zh-HK,zh;q=0.9"})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    handlers = [urllib.request.ProxyHandler({"http": proxy, "https": proxy})] if proxy else []
+    with urllib.request.build_opener(*handlers).open(req, timeout=30) as r:
         return r.read().decode("utf-8", "replace")
 
 
@@ -55,7 +57,7 @@ def hkej():
     out, errors = [], []
     for sec, name in HKEJ_SECTIONS.items():
         try:
-            page = get(f"https://www1.hkej.com/dailynews/{sec}")
+            page = get(f"https://www1.hkej.com/dailynews/{sec}", os.environ.get("HKEJ_PROXY"))
         except Exception as e:
             errors.append(f"{sec}: {e}")
             continue
